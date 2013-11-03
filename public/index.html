@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+  <meta name="keywords" content="Bit-Shadow Boss" />
+  <meta name="description" content="Manages a Bit-Shadow render farm." />
+  <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name='apple-mobile-web-app-capable' content='yes' />
+  <title>Bit-Shadow Boss</title>
+  <style type='text/css'>
+    body { font-family: Helvetica; }
+    th { text-align: left; }
+    .message { line-height: 0.5em; }
+    .status td, .status th {
+      padding: 1em;
+      vertical-align: top;
+    }
+    .status th { padding-bottom: 0; }
+  </style>
+  </head>
+  <body>
+    <table class='status'>
+      <tr>
+        <th>Project</th>
+        <th>In Progress</th>
+        <th>Completed</th>
+      </tr>
+      <tr>
+        <td id='project'>
+          <p>Total frames: <span id='totalFrames'></span></p>
+          <p>Frames completed: <span id='completedFrames'></span></p>
+        </td>
+        <td id='inProgress'></td>
+        <td id='completed'></td>
+      </tr>
+    </table>
+    <script src='http://bit-shadow-boss.jit.su/socket.io/socket.io.js'></script>
+    <script type="text/javascript">
+      var socket = io.connect('http://bit-shadow-boss.jit.su');
+      socket.on('frameUpdate', function(data) {
+        document.getElementById('totalFrames').textContent = data.totalFrames;
+        document.getElementById('completedFrames').textContent = data.completedFrames;
+      });
+      socket.on('frameNew', function(data) {
+        var container = document.getElementById('inProgress');
+        var p = document.createElement('p');
+        p.className = 'message';
+        p.textContent = data.frameNumber;
+        container.insertBefore(p, container.firstChild);
+      });
+      socket.on('frameComplete', function(data) {
+        var container = document.getElementById('completed');
+        var p = document.createElement('p');
+        var sec = Math.floor(data.frameDuration / 1000);
+        var min = sec / 60;
+        p.className = 'message';
+        p.textContent = data.frameNumber + ' | ' + min.toFixed(2) + ' min';
+        container.insertBefore(p, container.firstChild);
+      });
+    </script>
+  </body>
+</html>
