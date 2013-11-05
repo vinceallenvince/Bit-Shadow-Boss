@@ -4,6 +4,7 @@ var app = require('http').createServer(handler),
     io = require('socket.io').listen(app),
     url = require('url'),
     fs = require('fs'),
+    http = require('http'),
     path = require('path'),
     EventEmitter = require('events').EventEmitter;
 
@@ -12,13 +13,31 @@ app.listen(8080);
 // Will emit data events on this emitter
 var emitter = new EventEmitter();
 
-var currentFrame = 1101,
+var startFrame = 0,
+    endFrame = 0,
+    currentFrame = 0,
     totalFrames = 0,
     completedFrames = 0,
-    pathToData = __dirname;
+    hostData = 'www.bitshadowmachine.com',
+    pathToData = '/boss/data';
 
-var dataFiles = fs.readdirSync(pathToData + '/data');
-totalFrames = getTotalFrames(dataFiles);
+http.get({host: hostData, path: pathToData + '/config.json'}, function(response) {
+  var result = '';
+
+  // another chunk of data has been recieved; append it to `result`
+  response.on('data', function (chunk) {
+    result += chunk;
+  });
+
+  // the whole response has been recieved
+  response.on('end', function () {
+    result = JSON.parse(result);
+    startFrame = result.startFrame;
+    endFrame = result.endFrame;
+    totalFrames = (result.endFrame - result.startFrame) + 1;
+  });
+});
+
 
 function handler(req, res) {
 
@@ -41,19 +60,32 @@ function handler(req, res) {
 
   if (req.method === 'GET' && parts[1] === 'data') {
 
-    var file = pathToData + '/data/frame' + currentFrame + '.json';
+    // check if we're done
+    if (currentFrame > endFrame) {
+      res.end(JSON.stringify({stop: true}));
+    }
 
-    fs.readFile(file, 'utf8', function (err, data) {
-      if (err) {
-        console.log('Error: ' + err);
-        return;
-      }
-      res.end(data);
-      emitter.emit('frameNew', {  // Emit the data on the emitter
-        frameNumber: currentFrame,
-        host: req.headers.host
+    http.get({host: hostData, path: pathToData + '/frame' + currentFrame + '.json'}, function(response) {
+      var result = '';
+
+      // another chunk of data has been recieved; append it to `result`
+      response.on('data', function (chunk) {
+        result += chunk;
       });
-      currentFrame++; // increment current frame
+
+      // the whole response has been recieved
+      response.on('end', function () {
+        res.end(result);
+        emitter.emit('frameNew', {  // Emit the data on the emitter
+          frameNumber: currentFrame,
+          host: req.headers.host
+        });
+        currentFrame++; // increment current frame
+      });
+
+      response.on('error', function (err) {
+        console.log('Boss error reading data file: ' + err);
+      });
     });
   }
 
@@ -87,22 +119,6 @@ function getFile(localPath, res) {
       res.end();
     }
   });
-}
-
-/**
- * Iterates over a passed array of file names and counts
- * only the .json files.
- * @param {Array.<string>} dataFiles An array of file names.
- * @return {number} The total number of frames to render.
- */
-function getTotalFrames(dataFiles) {
-  var i, total = 0;
-  for (var i = dataFiles.length - 1; i >=0; i--) {
-    if (dataFiles[i].search('.json') !== -1) {
-      total++;
-    }
-  }
-  return total;
 }
 
 io.sockets.on('connection', function(socket) {
