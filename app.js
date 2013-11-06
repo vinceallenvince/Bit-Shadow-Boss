@@ -12,7 +12,7 @@ app.listen(8080);
 // Will emit data events on this emitter
 var emitter = new EventEmitter();
 
-var currentFrame = 1101,
+var currentFrame = 1308,
     totalFrames = 0,
     completedFrames = 0,
     pathToData = __dirname;
