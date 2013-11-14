@@ -33,6 +33,7 @@ http.get({host: hostData, path: pathToData + '/config.json'}, function(response)
   response.on('end', function () {
     result = JSON.parse(result);
     startFrame = result.startFrame;
+    currentFrame = result.startFrame;
     endFrame = result.endFrame;
     totalFrames = (result.endFrame - result.startFrame) + 1;
   });
